@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <dirent.h>
 #include "darknet.h"
 #include "network.h"
 #include "region_layer.h"
@@ -22,6 +23,17 @@ typedef __compar_fn_t comparison_fn_t;
 int check_mistakes = 0;
 
 static int coco_ids[] = { 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90 };
+
+int left_cnts = 0;
+int center_cnts = 0;
+int right_cnts = 0;
+int gt_left_cnt = 0;
+int gt_center_cnt = 0;
+int gt_right_cnt = 0;
+int all_left_cnt = 0;
+int all_center_cnt = 0;
+int all_right_cnt = 0;
+int fr_cnt=0;
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show, int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char* chart_path)
 {
@@ -1599,9 +1611,7 @@ void calc_anchors(char *datacfg, int num_of_clusters, int width, int height, int
     getchar();
 }
 
-
-void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh,
-    float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers)
+void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers, char *gt_path,char *txt_path)
 {
     list *options = read_data_cfg(datacfg);
     char *name_list = option_find_str(options, "names", "data/names.list");
@@ -1622,149 +1632,272 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             name_list, names_size, net.layers[net.n - 1].classes, cfgfile);
         if (net.layers[net.n - 1].classes > names_size) getchar();
     }
+
     srand(2222222);
     char buff[256];
     char *input = buff;
-    char *json_buf = NULL;
-    int json_image_id = 0;
-    FILE* json_file = NULL;
-    if (outfile) {
-        json_file = fopen(outfile, "wb");
-        if(!json_file) {
-          error("fopen failed");
-        }
-        char *tmp = "[\n";
-        fwrite(tmp, sizeof(char), strlen(tmp), json_file);
-    }
-    int j;
     float nms = .45;    // 0.4F
-    while (1) {
-        if (filename) {
+
+    char gt_buff[256];
+    char *gt_input = gt_buff;
+
+    char out_buff[256];
+    char *out_p = out_buff;
+
+    FILE* fw_txt;
+    bool txt_flag=false;
+    bool gt_flag=false;
+
+
+
+    if(txt_path!='\0'){
+        strcat(txt_path,"/result.txt");
+        fw_txt=fopen(txt_path,"w+");// txt make;
+        txt_flag=true;
+
+	}
+
+
+	if(gt_path!='\0'){
+//        fw_txt=fopen(txt_path,"w+");// txt make;
+        gt_flag=true;
+	}
+
+//    char *json_buf = NULL;
+//    int json_image_id = 0;
+//    FILE* json_file = NULL;
+//    if (outfile) {
+//        json_file = fopen(outfile, "wb");
+//        if(!json_file) {
+//          error("fopen failed");
+//        }
+//        char *tmp = "[\n";
+//        fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+//    }
+    int j;
+
+//    opendir(filename);
+
+    struct dirent **namelist;
+    int idx;
+    int count;
+
+    count=scandir(filename,&namelist,NULL,alphasort);
+
+    if(count==-1){printf("Fail\n");}
+    make_window("predictions", 512, 512, 0);
+//    while(1){
+    printf("Image path file count :%d\n",count);
+
+    for(idx=0;idx<count;idx++){
+        if(namelist[idx]->d_type==DT_REG){ // DT_REG is regular file
+            make_window("predictions", 512, 512, 0);
+//            if (filename) {
+//                strncpy(input, filename, 256);
+//                if (strlen(input) > 0)
+//                    if (input[strlen(input) - 1] == 0x0d) input[strlen(input) - 1] = 0;
+//            }
+//            else {
+//                printf("Enter Image Path: ");
+//                fflush(stdout);
+//                input = fgets(input, 256, stdin);
+//                if (!input) break;
+//                strtok(input, "\n");
+//            }
+
+            fr_cnt++;//image count
             strncpy(input, filename, 256);
-            if (strlen(input) > 0)
-                if (input[strlen(input) - 1] == 0x0d) input[strlen(input) - 1] = 0;
-        }
-        else {
-            printf("Enter Image Path: ");
-            fflush(stdout);
-            input = fgets(input, 256, stdin);
-            if (!input) break;
-            strtok(input, "\n");
-        }
-        //image im;
-        //image sized = load_image_resize(input, net.w, net.h, net.c, &im);
-        image im = load_image(input, 0, 0, net.c);
-        image sized;
-        if(letter_box) sized = letterbox_image(im, net.w, net.h);
-        else sized = resize_image(im, net.w, net.h);
+			strcat(input,"/");
+			strcat(input,namelist[idx]->d_name);
 
-        layer l = net.layers[net.n - 1];
-        int k;
-        for (k = 0; k < net.n; ++k) {
-            layer lk = net.layers[k];
-            if (lk.type == YOLO || lk.type == GAUSSIAN_YOLO || lk.type == REGION) {
-                l = lk;
-                printf(" Detection layer: %d - type = %d \n", k, l.type);
+//            printf("%s\n",namelist[idx]->d_name);
+
+
+
+            image im = load_image(input, 0, 0, net.c);
+            image sized;
+
+            if(letter_box) sized = letterbox_image(im, net.w, net.h);
+            else sized = resize_image(im, net.w, net.h);
+
+
+//            strncpy(gt_input, gt_path, 256);
+//            strcat(gt_input,"/");
+//            strcat(gt_input,namelist[idx]->d_name);
+//            strcat(gt_input,"/");
+//            char *pos;
+//            pos = strrchr(gt_input, '.' );
+//            *pos = NULL;
+// 			strcat(gt_input,".txt");
+
+
+            //image im;
+            //image sized = load_image_resize(input, net.w, net.h, net.c, &im);
+
+
+            layer l = net.layers[net.n - 1];
+
+            if (gt_flag){
+                strncpy(gt_input, gt_path, 256);
+                strcat(gt_input,"/");
+                strcat(gt_input,namelist[idx]->d_name);
+                strcat(gt_input,"/");
+                char *pos;
+                pos = strrchr(gt_input, '.' );
+                *pos = NULL;
+                strcat(gt_input,".txt");
             }
-        }
+            int k;
 
-        //box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
-        //float **probs = calloc(l.w*l.h*l.n, sizeof(float*));
-        //for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = (float*)xcalloc(l.classes, sizeof(float));
-
-        float *X = sized.data;
-
-        //time= what_time_is_it_now();
-        double time = get_time_point();
-        network_predict(net, X);
-        //network_predict_image(&net, im); letterbox = 1;
-        printf("%s: Predicted in %lf milli-seconds.\n", input, ((double)get_time_point() - time) / 1000);
-        //printf("%s: Predicted in %f seconds.\n", input, (what_time_is_it_now()-time));
-
-        int nboxes = 0;
-        detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letter_box);
-        if (nms) {
-            if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
-            else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
-        }
-        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
-        save_image(im, "predictions");
-        if (!dont_show) {
-            show_image(im, "predictions");
-        }
-
-        if (json_file) {
-            if (json_buf) {
-                char *tmp = ", \n";
-                fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+            for (k = 0; k < net.n; ++k) {
+                layer lk = net.layers[k];
+                if (lk.type == YOLO || lk.type == GAUSSIAN_YOLO || lk.type == REGION) {
+                    l = lk;
+                    printf(" Detection layer: %d - type = %d \n", k, l.type);
+                }
             }
-            ++json_image_id;
-            json_buf = detection_to_json(dets, nboxes, l.classes, names, json_image_id, input);
 
-            fwrite(json_buf, sizeof(char), strlen(json_buf), json_file);
-            free(json_buf);
-        }
+            //box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
+            //float **probs = calloc(l.w*l.h*l.n, sizeof(float*));
+            //for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = (float*)xcalloc(l.classes, sizeof(float));
 
-        // pseudo labeling concept - fast.ai
-        if (save_labels)
-        {
-            char labelpath[4096];
-            replace_image_to_label(input, labelpath);
+            float *X = sized.data;
 
-            FILE* fw = fopen(labelpath, "wb");
-            int i;
-            for (i = 0; i < nboxes; ++i) {
-                char buff[1024];
-                int class_id = -1;
-                float prob = 0;
-                for (j = 0; j < l.classes; ++j) {
-                    if (dets[i].prob[j] > thresh && dets[i].prob[j] > prob) {
-                        prob = dets[i].prob[j];
-                        class_id = j;
+            //time= what_time_is_it_now();
+            double time = get_time_point();
+            network_predict(net, X);
+
+            //network_predict_image(&net, im); letterbox = 1;
+            printf("%s: Predicted in %lf milli-seconds.\n", input, ((double)get_time_point() - time) / 1000);
+            //printf("%s: Predicted in %f seconds.\n", input, (what_time_is_it_now()-time));
+
+            int nboxes = 0;
+            detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letter_box);
+            if (nms) {
+                if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
+                else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
+            }
+            fr_cnt++;
+            car_cnt cnts;
+
+            cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path);
+
+
+            left_cnts += cnts.left_cnt;
+            center_cnts += cnts.center_cnt;
+            right_cnts += cnts.right_cnt;
+            gt_left_cnt += cnts.gt_left_cnt;
+            gt_center_cnt += cnts.gt_center_cnt;
+            gt_right_cnt += cnts.gt_right_cnt;
+            all_left_cnt += cnts.all_left_cnt;
+            all_center_cnt += cnts.all_center_cnt;
+            all_right_cnt += cnts.all_right_cnt;
+
+            printf("*----Precision [TP/All detections]----*\n");
+            printf("Left   Car : [%d/%d] \n", left_cnts, gt_left_cnt);
+            printf("Center Car : [%d/%d] \n", center_cnts, gt_center_cnt);
+            printf("Right  Car : [%d/%d] \n", right_cnts, gt_right_cnt);
+
+            printf("*----Precision [TP/Al Ground truths]----*\n");
+            printf("Left   Car : [%d/%d] \n", left_cnts, all_left_cnt);
+            printf("Center Car : [%d/%d] \n", center_cnts, all_center_cnt);
+            printf("Right  Car : [%d/%d] \n", right_cnts, all_right_cnt);
+
+            if(outfile){
+		    strncpy(out_p, outfile, 256);
+		    strcat(out_p, "/");
+		    strcat(out_p, namelist[idx]->d_name);
+	            save_image(im, out_p);
+	        }
+
+            if (!dont_show) {
+                show_image(im, "predictions");
+            }
+
+//            if (json_file) {
+//                if (json_buf) {
+//                    char *tmp = ", \n";
+//                    fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+//                }
+//                ++json_image_id;
+//                json_buf = detection_to_json(dets, nboxes, l.classes, names, json_image_id, input);
+//
+//                fwrite(json_buf, sizeof(char), strlen(json_buf), json_file);
+//                free(json_buf);
+//            }
+
+            // pseudo labeling concept - fast.ai
+            if (save_labels)
+            {
+                char labelpath[4096];
+                replace_image_to_label(input, labelpath);
+
+                FILE* fw = fopen(labelpath, "wb");
+                int i;
+                for (i = 0; i < nboxes; ++i) {
+                    char buff[1024];
+                    int class_id = -1;
+                    float prob = 0;
+                    for (j = 0; j < l.classes; ++j) {
+                        if (dets[i].prob[j] > thresh && dets[i].prob[j] > prob) {
+                            prob = dets[i].prob[j];
+                            class_id = j;
+                        }
+                    }
+                    if (class_id >= 0) {
+                        sprintf(buff, "%d %2.4f %2.4f %2.4f %2.4f\n", class_id, dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w, dets[i].bbox.h);
+                        fwrite(buff, sizeof(char), strlen(buff), fw);
                     }
                 }
-                if (class_id >= 0) {
-                    sprintf(buff, "%d %2.4f %2.4f %2.4f %2.4f\n", class_id, dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w, dets[i].bbox.h);
-                    fwrite(buff, sizeof(char), strlen(buff), fw);
-                }
+                fclose(fw);
             }
-            fclose(fw);
+
+            free_detections(dets, nboxes);
+            free_image(im);
+            free_image(sized);
+
+    //        free(namelist[idx]);
+
+            if (!dont_show) {
+                wait_until_press_key_cv();
+                destroy_all_windows_cv();
+            }
+
+//            if (filename) break;
         }
 
-        free_detections(dets, nboxes);
-        free_image(im);
-        free_image(sized);
+//        if (json_file) {
+//            char *tmp = "\n]";
+//            fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+//            fclose(json_file);
+//        }
 
-        if (!dont_show) {
-            wait_until_press_key_cv();
-            destroy_all_windows_cv();
-        }
+        // free memory
+//        free_ptrs((void**)names, net.layers[net.n - 1].classes);
+//        free_list_contents_kvp(options);
+//        free_list(options);
 
-        if (filename) break;
+//        int i;
+//        const int nsize = 8;
+//        for (j = 0; j < nsize; ++j) {
+//            for (i = 32; i < 127; ++i) {
+//                free_image(alphabet[j][i]);
+//            }
+//            free(alphabet[j]);
+//        }
+//        free(alphabet);
+//
+//        free_network(net);
+
+
     }
 
-    if (json_file) {
-        char *tmp = "\n]";
-        fwrite(tmp, sizeof(char), strlen(tmp), json_file);
-        fclose(json_file);
+    if(txt_flag){
+
+        fclose(fw_txt);
     }
 
-    // free memory
-    free_ptrs((void**)names, net.layers[net.n - 1].classes);
-    free_list_contents_kvp(options);
-    free_list(options);
-
-    int i;
-    const int nsize = 8;
-    for (j = 0; j < nsize; ++j) {
-        for (i = 32; i < 127; ++i) {
-            free_image(alphabet[j][i]);
-        }
-        free(alphabet[j]);
-    }
-    free(alphabet);
-
-    free_network(net);
+    free(namelist);
 }
 
 #if defined(OPENCV) && defined(GPU)
@@ -1800,6 +1933,7 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
 
     int j;
     float nms = .45;    // 0.4F
+
     while (1) {
         if (filename) {
             strncpy(input, filename, 256);
@@ -1892,7 +2026,9 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
             if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
             else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
         }
-        draw_detections_v3(sized, dets, nboxes, thresh, names, alphabet, l.classes, 1);
+
+        car_cnt cnts;
+        cnts = draw_detections_v3(sized, 0,dets, nboxes, thresh, names, alphabet, l.classes, 1,"");
         save_image(sized, "pre_predictions");
         if (!dont_show) {
             show_image(sized, "pre_predictions");
@@ -1913,12 +2049,12 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
 
         if (filename) break;
     }
-
+    printf("ASD\n");
     // free memory
     free_ptrs((void**)names, net.layers[net.n - 1].classes);
     free_list_contents_kvp(options);
     free_list(options);
-
+    printf("ASD\n");
     int i;
     const int nsize = 8;
     for (j = 0; j < nsize; ++j) {
@@ -1928,8 +2064,9 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
         free(alphabet[j]);
     }
     free(alphabet);
-
+    printf("ASD\n");
     free_network(net);
+    printf("ASD\n");
 }
 #else // defined(OPENCV) && defined(GPU)
 void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, int dont_show, int it_num,
@@ -1975,6 +2112,9 @@ void run_detector(int argc, char **argv)
     int ext_output = find_arg(argc, argv, "-ext_output");
     int save_labels = find_arg(argc, argv, "-save_labels");
     char* chart_path = find_char_arg(argc, argv, "-chart", 0);
+    char *txtpath = find_char_arg(argc, argv,"-txt",0);
+
+
     if (argc < 4) {
         fprintf(stderr, "usage: %s %s [train/test/valid/demo/map] [data] [cfg] [weights (optional)]\n", argv[0], argv[1]);
         return;
@@ -2012,7 +2152,8 @@ void run_detector(int argc, char **argv)
         if (strlen(weights) > 0)
             if (weights[strlen(weights) - 1] == 0x0d) weights[strlen(weights) - 1] = 0;
     char *filename = (argc > 6) ? argv[6] : 0;
-    if (0 == strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, dont_show, ext_output, save_labels, outfile, letter_box, benchmark_layers);
+    char *gt_path = (argc >7) ? argv[7]: 0;
+    if (0 == strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, dont_show, ext_output, save_labels, outfile, letter_box, benchmark_layers, gt_path,txtpath);
     else if (0 == strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear, dont_show, calc_map, mjpeg_port, show_imgs, benchmark_layers, chart_path);
     else if (0 == strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
     else if (0 == strcmp(argv[2], "recall")) validate_detector_recall(datacfg, cfg, weights);

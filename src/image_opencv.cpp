@@ -385,6 +385,17 @@ extern "C" void resize_window_cv(char const* window_name, int width, int height)
 }
 // ----------------------------------------
 
+extern "C" void move_window_cv(char const* window_name, int x, int y)
+{
+    try {
+        cv::moveWindow(window_name, x, y);
+    }
+    catch (...) {
+        cerr << "OpenCV exception: create_window_cv \n";
+    }
+}
+// ----------------------------------------
+
 extern "C" void destroy_all_windows_cv()
 {
     try {
@@ -834,6 +845,15 @@ extern "C" image get_image_from_stream_letterbox(cap_cv *cap, int w, int h, int 
 }
 // ----------------------------------------
 
+extern "C" void consume_frame(cap_cv *cap){
+    cv::Mat *src = NULL;
+    src = (cv::Mat *)get_capture_frame_cv(cap);
+    if (src)
+        delete src;
+}
+// ----------------------------------------
+
+
 // ====================================================================
 // Image Saving
 // ====================================================================
@@ -900,13 +920,13 @@ extern "C" void draw_detections_cv_v3(mat_cv* mat, detection *dets, int num, flo
                         }
                         sprintf(buff, " (%2.0f%%)", dets[i].prob[j] * 100);
                         strcat(labelstr, buff);
-                        printf("%s: %.0f%% ", names[j], dets[i].prob[j] * 100);
+                        printf("%s", names[j]);
                         if (dets[i].track_id) printf("(track = %d, sim = %f) ", dets[i].track_id, dets[i].sim);
                     }
                     else {
                         strcat(labelstr, ", ");
                         strcat(labelstr, names[j]);
-                        printf(", %s: %.0f%% ", names[j], dets[i].prob[j] * 100);
+                        printf(", %s ", names[j]);
                     }
                 }
             }

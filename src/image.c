@@ -20,6 +20,9 @@
 #include "stb_image_write.h"
 #endif
 
+#define __MAX(a,b) (((a)>(b))?(a):(b))
+#define __MIN(a,b) (((a)<(b))?(a):(b))
+
 extern int check_mistakes;
 //int windows = 0;
 
@@ -326,17 +329,92 @@ int compare_by_probs(const void *a_ptr, const void *b_ptr) {
     return delta < 0 ? -1 : delta > 0 ? 1 : 0;
 }
 
-void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output)
+bool compute_iou(float gt_a, float gt_b, float gt_c, float gt_d, int pred_xmin, int pred_ybot, int pred_xmax, int pred_ytop){
+
+    bool ok_cnt = false;
+    int img_width = 1280;
+    int img_height = 960;
+    int gt_bbox_w = (int)(gt_c * img_width);
+    int gt_bbox_h = (int)(gt_d * img_height);
+    int gt_xmin = (int)((gt_a*img_width) - (gt_bbox_w/2));
+    int gt_ybot = (int)((gt_b * img_height) + gt_bbox_h/2);
+    int gt_xmax = (int)(gt_xmin + gt_bbox_w);
+    int gt_ytop = (int)(gt_ybot - gt_bbox_h);
+
+    int inter_area;
+    float iou = 0.0;
+    int x_a = __MAX(gt_xmin, pred_xmin);
+    int y_a = __MIN(gt_ybot, pred_ybot);
+    int x_b = __MIN(gt_xmax, pred_xmax);
+    int y_b = __MAX(gt_ytop, pred_ytop);
+
+    if (((x_b - x_a) > 0) && (y_a - y_b) > 0){
+        inter_area = abs((x_b - x_a)) * abs((y_a - y_b));
+        int gt_area = (gt_xmax - gt_xmin) * (gt_ybot -gt_ytop);
+        int pred_area = (pred_xmax - pred_xmin) * (pred_ybot - pred_ytop);
+        iou = (float) inter_area / (gt_area + pred_area - inter_area);
+    }
+    if (iou >= 0.5){
+        ok_cnt = true;
+    }
+    return ok_cnt;
+}
+
+extern int fr_cnt;//image count
+
+void SWAP(sorting* arr, int a, int b){
+    sorting temp;
+    temp=arr[a];
+    arr[a]=arr[b];
+    arr[b]=temp;
+}
+
+void sortCenX(sorting* arr, int m, int n){
+    if(m<n){
+        int key=m;
+        int i=m+1;
+        int j=n;
+        while(i<=j){
+            while(i<=n && arr[i].tmp_cenX <= arr[key].tmp_cenX){
+                i++;
+            }
+            while(j>m && arr[j].tmp_cenX >= arr[key].tmp_cenX){
+                j--;
+            }
+            if(i>j){
+                SWAP(arr,j,key);
+            }
+            else{
+                SWAP(arr,i,j);
+            }
+        }
+        sortCenX(arr,m,j-1);
+        sortCenX(arr,j+1,n);
+    }
+}
+
+
+car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output, char *txt_path)
 {
+    bool txt_flag=false;
     static int frame_id = 0;
     frame_id++;
-
+    FILE* fw1;
     int selected_detections_num;
-    detection_with_class* selected_detections = get_actual_detections(dets, num, thresh, &selected_detections_num, names);
 
+    detection_with_class* selected_detections = get_actual_detections(dets, num, thresh, &selected_detections_num, names);
     // text output
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_lefts);
     int i;
+    sorting s[20];
+    bool gt_flag = true;
+    if(txt_path!='\0'){
+        fw1=fopen(txt_path,"a");// txt make;
+        txt_flag=true;
+     }
+
+    int box_cnt=0;
+
     for (i = 0; i < selected_detections_num; ++i) {
         const int best_class = selected_detections[i].best_class;
         printf("%s: %.0f%%", names[best_class],    selected_detections[i].det.prob[best_class] * 100);
@@ -361,11 +439,76 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
                     printf("\n");
             }
         }
+
     }
+
+    FILE *fp;
+//    printf(gt_flag ? "true" : "false");
+
+
+//    if ((fp = fopen(gt_input, "r")) == NULL){
+//          gt_flag = false;
+//    }
+    char pred_box[3][5][20];
+    int label_cnt = 0;
+//    if (gt_flag== true){
+//
+//        char text[256];
+//        char fuc[3][50];
+//        for(int i=0;i<3;i++){
+//
+//            if(fgets(text, sizeof(text), fp)==NULL) break;
+//
+//            else{
+//                label_cnt += 1;
+//                strcpy(fuc[i],text);
+//            }
+//        }
+//
+//        for(int i =0; i<label_cnt; i++){
+//            char *input_ptr = strtok(fuc[i], " ");
+//            int k = 0;
+//            while (input_ptr != NULL)
+//            {
+//                strcpy(pred_box[i][k], input_ptr);
+//                k = k + 1;
+//                input_ptr = strtok(NULL, " ");
+//            }
+//        }
+//
+//        fclose(fp);
+//    }
+
+    car_cnt cnts;
+    cnts.gt_left_cnt = 0;
+    cnts.gt_center_cnt = 0;
+    cnts.gt_right_cnt = 0;
+    cnts.left_cnt = 0;
+    cnts.center_cnt = 0;
+    cnts.right_cnt = 0;
+    cnts.all_left_cnt = 0;
+    cnts.all_center_cnt = 0;
+    cnts.all_right_cnt = 0;
+
+    if (gt_flag == true){
+        // Count GT
+        for(int k=0;k<label_cnt;k++){
+            if (atoi(pred_box[k][0]) == 0){
+                cnts.gt_left_cnt = 1;
+            } else if (atoi(pred_box[k][0]) == 1){
+                cnts.gt_center_cnt = 1;
+            } else if (atoi(pred_box[k][0]) == 2){
+                cnts.gt_right_cnt = 1;
+            }
+        }
+     }
 
     // image output
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_probs);
+    int j;
+
     for (i = 0; i < selected_detections_num; ++i) {
+
             int width = im.h * .002;
             if (width < 1)
                 width = 1;
@@ -376,6 +519,19 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
             alphabet = 0;
             }
             */
+        char labelstr[4096] = {0};
+        int class = -1;
+        float confidence;
+        for(j = 0; j < classes; ++j){ //classes = demo_classes(80 or 8)
+            if (selected_detections[i].det.prob[j]> thresh){
+                if (class < 0) {
+                    strcat(labelstr, names[j]);
+
+                    class = j ;
+                }
+                confidence = selected_detections[i].det.prob[j];
+			}
+        }
 
             //printf("%d %s: %.0f%%\n", i, names[selected_detections[i].best_class], prob*100);
             int offset = selected_detections[i].best_class * 123457 % classes;
@@ -424,6 +580,50 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
             //sprintf(image_name, "result_img/img_%d_%d_%d_%s.jpg", frame_id, img_id, best_class_id, names[best_class_id]);
             //save_image(cropped_im, image_name);
             //free_image(cropped_im);
+            if (gt_flag == true){
+                // Count GT
+//                for(int k=0;k<label_cnt;k++){
+//                    if (atoi(pred_box[k][0]) == 0){
+//                        cnts.gt_left_cnt = 1;
+//                    } else if (atoi(pred_box[k][0]) == 1){
+//                        cnts.gt_center_cnt = 1;
+//                    } else if (atoi(pred_box[k][0]) == 2){
+//                        cnts.gt_right_cnt = 1;
+//                    }
+//                }
+
+                bool left_check = false;
+                bool center_check = false;
+                bool right_check = false;
+                for(int k=0;k<label_cnt;k++){
+                    printf("%s",pred_box[k][0]);
+                    if (strcmp(labelstr, "FVL")==0 && atoi(pred_box[k][0]) == 0){
+                        if (left_check == false){
+                            cnts.all_left_cnt = 1;
+                            left_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                            if (left_check == true){
+                                cnts.left_cnt = 1;
+                            }
+                        }
+                    } else if (strcmp(labelstr, "FVI")==0 && atoi(pred_box[k][0]) == 1){
+                        if (center_check == false){
+                            cnts.all_center_cnt = 1;
+                            center_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                            if (center_check == true){
+                                cnts.center_cnt = 1;
+                            }
+                        }
+                    } else if (strcmp(labelstr, "FVR")==0 && atoi(pred_box[k][0]) == 2){
+                        if (right_check == false){
+                            cnts.all_right_cnt = 1;
+                            right_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                            if (right_check == true){
+                                cnts.right_cnt = 1;
+                            }
+                        }
+                    }
+                }
+            }
 
             if (im.c == 1) {
                 draw_box_width_bw(im, left, top, right, bot, width, 0.8);    // 1 channel Black-White
@@ -434,16 +634,16 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
             if (alphabet) {
                 char labelstr[4096] = { 0 };
                 strcat(labelstr, names[selected_detections[i].best_class]);
-                char prob_str[10];
-                sprintf(prob_str, ": %.2f", selected_detections[i].det.prob[selected_detections[i].best_class]);
-                strcat(labelstr, prob_str);
+                //char prob_str[10];
+                //sprintf(prob_str, ": %.2f", selected_detections[i].det.prob[selected_detections[i].best_class]);
+                //strcat(labelstr, prob_str);
                 int j;
-                for (j = 0; j < classes; ++j) {
-                    if (selected_detections[i].det.prob[j] > thresh && j != selected_detections[i].best_class) {
-                        strcat(labelstr, ", ");
-                        strcat(labelstr, names[j]);
-                    }
-                }
+                // for (j = 0; j < classes; ++j) {
+                //    if (selected_detections[i].det.prob[j] > thresh && j != selected_detections[i].best_class) {
+                //        strcat(labelstr, ", ");
+                //        strcat(labelstr, names[j]);
+                //    }
+                //}
                 image label = get_label_v3(alphabet, labelstr, (im.h*.02));
                 //draw_label(im, top + width, left, label, rgb);
                 draw_weighted_label(im, top + width, left, label, rgb, 0.7);
@@ -458,8 +658,45 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
                 free_image(resized_mask);
                 free_image(tmask);
             }
+
+            if(box_cnt<20){
+                s[box_cnt].tmp_fr=fr_cnt;
+                s[box_cnt].tmp_label = class;
+                s[box_cnt].tmp_cenX=(float)(left+right)/2;
+                s[box_cnt].tmp_cenY=(float)(top+bot)/2;
+                s[box_cnt].tmp_wid=(right-left);
+                s[box_cnt].tmp_height=(bot-top);
+                s[box_cnt].tmp_conf=confidence;
+                box_cnt++;
+
+            }
+    }
+    float dip =96.0; // KODAS_V3 based
+    float inch=2.54;
+    sortCenX(s,0,box_cnt-1);
+    if(txt_flag){
+
+        for(int k=0;k<box_cnt;k++){
+                float meter_h = (s[k].tmp_height*inch/dip)/100;
+                float meter_w = (s[k].tmp_wid*inch/dip)/100;
+
+    //          printf("meter_h : %f \t meter_w : %f\n",meter_h, meter_w);
+//                printf("fr_no %d box_num %d label %d cenX %.1f cen Y %.1f wid %d height %d conf %f\n", s[k].tmp_fr, k+1, s[k].tmp_label, s[k].tmp_cenX,s[k].tmp_cenY, s[k].tmp_wid,s[k].tmp_height, s[k].tmp_conf);
+                fprintf(fw1,"%d %d %d %.1f %.1f %d %d %f\n", s[k].tmp_fr, k+1, s[k].tmp_label, s[k].tmp_cenX,s[k].tmp_cenY, s[k].tmp_wid,s[k].tmp_height, s[k].tmp_conf);
+    //          printf("%d %d %f %.1f %.1f %d %d %f\n",s[k].tmp_fr,k+1,s[k].tmp_label,s[k].tmp_cenX,s[k].tmp_cenY,s[k].tmp_wid,s[k].tmp_height,s[k].tmp_conf);
+         }
+
+            if(20-box_cnt>0){
+                    for(int i=0;i<20-box_cnt;i++){
+    //                    printf("%d 0 0 0 0 0 0 0\n",fr_cnt);
+                          fprintf(fw1,"%d 0 0 0 0 0 0 0\n",fr_cnt);
+                    }
+            }
+            fclose(fw1);
     }
     free(selected_detections);
+
+    return cnts;
 }
 
 void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes)
@@ -1351,7 +1588,7 @@ void make_image_red(image im)
     }
 }
 
-image make_attention_image(int img_size, float *original_delta_cpu, float *original_input_cpu, int w, int h, int c)
+image make_attention_image(int img_size, float *original_delta_cpu, float *original_input_cpu, int w, int h, int c, float alpha)
 {
     image attention_img;
     attention_img.w = w;
@@ -1379,7 +1616,7 @@ image make_attention_image(int img_size, float *original_delta_cpu, float *origi
     image resized = resize_image(attention_img, w / 4, h / 4);
     attention_img = resize_image(resized, w, h);
     free_image(resized);
-    for (k = 0; k < img_size; ++k) attention_img.data[k] += original_input_cpu[k];
+    for (k = 0; k < img_size; ++k) attention_img.data[k] = attention_img.data[k]*alpha + (1-alpha)*original_input_cpu[k];
 
     //normalize_image(attention_img);
     //show_image(attention_img, "delta");
