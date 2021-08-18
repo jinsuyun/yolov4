@@ -1807,6 +1807,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 		    strncpy(out_p, outfile, 256);
 		    strcat(out_p, "/");
 		    strcat(out_p, namelist[idx]->d_name);
+		    eliminate_bdd(out_p, ".jpg");
 	            save_image(im, out_p);
 	        }
 
