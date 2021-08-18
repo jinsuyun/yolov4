@@ -51,6 +51,34 @@ typedef enum { UNUSED_DEF_VAL } UNUSED_ENUM_TYPE;
 extern "C" {
 #endif
 
+typedef struct sorting{
+//프레임카운트(몇번째 프레임인지)
+//박스id(한 이미지에서 박스가 여러개 나올때 id)
+//레이블(트럭인지 차인지)
+//박스좌표4개(centerX,centerY,width,height)
+//컨피던스
+
+    int tmp_fr;
+    int tmp_label;
+    float tmp_cenX;
+    float tmp_cenY;
+    int tmp_wid;
+    int tmp_height;
+    float tmp_conf;
+}sorting;
+
+typedef struct {
+    int left_cnt;
+    int center_cnt;
+    int right_cnt;
+    int gt_left_cnt;
+    int gt_center_cnt;
+    int gt_right_cnt;
+    int all_left_cnt;
+    int all_center_cnt;
+    int all_right_cnt;
+}car_cnt;
+
 struct network;
 typedef struct network network;
 
@@ -192,7 +220,8 @@ typedef enum {
     L2NORM,
     EMPTY,
     BLANK,
-    CONTRASTIVE
+    CONTRASTIVE,
+    IMPLICIT
 } LAYER_TYPE;
 
 // layer.h
@@ -557,6 +586,9 @@ struct layer {
 //#ifdef GPU
     int *indexes_gpu;
 
+    int stream;
+    int wait_stream_id;
+
     float *z_gpu;
     float *r_gpu;
     float *h_gpu;
@@ -817,6 +849,11 @@ typedef struct network {
     size_t *max_input16_size;
     size_t *max_output16_size;
     int wait_stream;
+    
+    void *cuda_graph;
+    void *cuda_graph_exec;
+    int use_cuda_graph;
+    int *cuda_graph_ready;
 
     float *global_delta_gpu;
     float *state_delta_gpu;
@@ -1039,15 +1076,15 @@ LIB_API float *network_predict_image(network *net, image im);
 LIB_API float *network_predict_image_letterbox(network *net, image im);
 LIB_API float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thresh_calc_avg_iou, const float iou_thresh, const int map_points, int letter_box, network *existing_net);
 LIB_API void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show, int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char* chart_path);
-LIB_API void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh,
-    float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers);
+//LIB_API void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh,
+//    float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers);
 LIB_API int network_width(network *net);
 LIB_API int network_height(network *net);
 LIB_API void optimize_picture(network *net, image orig, int max_layer, float scale, float rate, float thresh, int norm);
 
 // image.h
 LIB_API void make_image_red(image im);
-LIB_API image make_attention_image(int img_size, float *original_delta_cpu, float *original_input_cpu, int w, int h, int c);
+LIB_API image make_attention_image(int img_size, float *original_delta_cpu, float *original_input_cpu, int w, int h, int c, float alpha);
 LIB_API image resize_image(image im, int w, int h);
 LIB_API void quantize_image(image im);
 LIB_API void copy_image_from_bytes(image im, char *pdata);
