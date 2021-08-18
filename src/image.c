@@ -446,38 +446,36 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
 //    printf(gt_flag ? "true" : "false");
 
 
-//    if ((fp = fopen(gt_input, "r")) == NULL){
-//          gt_flag = false;
-//    }
+    if ((fp = fopen(gt_input, "r")) == NULL){
+          gt_flag = false;
+    }
     char pred_box[3][5][20];
     int label_cnt = 0;
-//    if (gt_flag== true){
-//
-//        char text[256];
-//        char fuc[3][50];
-//        for(int i=0;i<3;i++){
-//
-//            if(fgets(text, sizeof(text), fp)==NULL) break;
-//
-//            else{
-//                label_cnt += 1;
-//                strcpy(fuc[i],text);
-//            }
-//        }
-//
-//        for(int i =0; i<label_cnt; i++){
-//            char *input_ptr = strtok(fuc[i], " ");
-//            int k = 0;
-//            while (input_ptr != NULL)
-//            {
-//                strcpy(pred_box[i][k], input_ptr);
-//                k = k + 1;
-//                input_ptr = strtok(NULL, " ");
-//            }
-//        }
-//
-//        fclose(fp);
-//    }
+    if (gt_flag== true){
+        char text[256];
+        char fuc[3][50];
+        for(int i=0;i<3;i++){
+
+            if(fgets(text, sizeof(text), fp)==NULL) break;
+
+            else{
+                label_cnt += 1;
+                strcpy(fuc[i],text);
+            }
+        }
+        for(int i =0; i<label_cnt; i++){
+            char *input_ptr = strtok(fuc[i], " ");
+            int k = 0;
+            while (input_ptr != NULL)
+            {
+                strcpy(pred_box[i][k], input_ptr);
+                k = k + 1;
+                input_ptr = strtok(NULL, " ");
+            }
+        }
+
+        fclose(fp);
+    }
 
     car_cnt cnts;
     cnts.gt_left_cnt = 0;
@@ -596,7 +594,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 bool center_check = false;
                 bool right_check = false;
                 for(int k=0;k<label_cnt;k++){
-                    printf("%s",pred_box[k][0]);
+
                     if (strcmp(labelstr, "FVL")==0 && atoi(pred_box[k][0]) == 0){
                         if (left_check == false){
                             cnts.all_left_cnt = 1;

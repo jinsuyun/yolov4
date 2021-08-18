@@ -102,7 +102,7 @@ yolov4-tiny.conv.29
 yolov4.conv.137
 
 obj/
-
+KodasWithGT/
 scripts/
 build/
 build/*
