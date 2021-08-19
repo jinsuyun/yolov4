@@ -1798,7 +1798,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             printf("Center Car : [%d/%d] \n", center_cnts, gt_center_cnt);
             printf("Right  Car : [%d/%d] \n", right_cnts, gt_right_cnt);
 
-            printf("*----Precision [TP/Al Ground truths]----*\n");
+            printf("*----Recall [TP/Al Ground truths]----*\n");
             printf("Left   Car : [%d/%d] \n", left_cnts, all_left_cnt);
             printf("Center Car : [%d/%d] \n", center_cnts, all_center_cnt);
             printf("Right  Car : [%d/%d] \n", right_cnts, all_right_cnt);
