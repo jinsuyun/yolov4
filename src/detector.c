@@ -33,7 +33,11 @@ int gt_right_cnt = 0;
 int all_left_cnt = 0;
 int all_center_cnt = 0;
 int all_right_cnt = 0;
+int car_only_cnt = 0;
+int gt_car_only_cnt = 0;
+int all_car_only_cnt =0;
 int fr_cnt=0;
+
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show, int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char* chart_path)
 {
@@ -1611,7 +1615,7 @@ void calc_anchors(char *datacfg, int num_of_clusters, int width, int height, int
     getchar();
 }
 
-void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers, char *gt_path,char *txt_path)
+void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers, char *gt_path,char *txt_path, int car_only)
 {
     list *options = read_data_cfg(datacfg);
     char *name_list = option_find_str(options, "names", "data/names.list");
@@ -1780,7 +1784,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             fr_cnt++;
             car_cnt cnts;
 
-            cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path);
+            cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path, car_only);
 
 
             left_cnts += cnts.left_cnt;
@@ -1792,17 +1796,30 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             all_left_cnt += cnts.all_left_cnt;
             all_center_cnt += cnts.all_center_cnt;
             all_right_cnt += cnts.all_right_cnt;
+            car_only_cnt += cnts.car_only_cnt;
+            gt_car_only_cnt += cnts.gt_car_only_cnt;
+            all_car_only_cnt += cnts.all_car_only_cnt;
 
-            printf("*----Precision [TP/All detections]----*\n");
-            printf("Left   Car : [%d/%d] \n", left_cnts, gt_left_cnt);
-            printf("Center Car : [%d/%d] \n", center_cnts, gt_center_cnt);
-            printf("Right  Car : [%d/%d] \n", right_cnts, gt_right_cnt);
+            if(car_only==0){
 
-            printf("*----Recall [TP/Al Ground truths]----*\n");
-            printf("Left   Car : [%d/%d] \n", left_cnts, all_left_cnt);
-            printf("Center Car : [%d/%d] \n", center_cnts, all_center_cnt);
-            printf("Right  Car : [%d/%d] \n", right_cnts, all_right_cnt);
+                printf("*----Recall [TP/Al Ground truths]----*\n");
+                printf("Left   Car : [%d/%d] \n", left_cnts, gt_left_cnt);
+                printf("Center Car : [%d/%d] \n", center_cnts, gt_center_cnt);
+                printf("Right  Car : [%d/%d] \n", right_cnts, gt_right_cnt);
 
+                printf("*----Precision [TP/All detections]----*\n");
+                printf("Left   Car : [%d/%d] \n", left_cnts, all_left_cnt);
+                printf("Center Car : [%d/%d] \n", center_cnts, all_center_cnt);
+                printf("Right  Car : [%d/%d] \n", right_cnts, all_right_cnt);
+            }
+            else if(car_only==1){
+                printf("*----Recall [TP/All Ground truths]----*\n");
+                printf("Car : [%d/%d] \n", car_only_cnt, gt_car_only_cnt);
+
+                printf("*----Precision [TP/All detections]----*\n");
+                printf("Car : [%d/%d] \n", car_only_cnt, all_car_only_cnt);
+
+            }
             if(outfile){
 		    strncpy(out_p, outfile, 256);
 		    strcat(out_p, "/");
@@ -2029,7 +2046,7 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
         }
 
         car_cnt cnts;
-        cnts = draw_detections_v3(sized, 0,dets, nboxes, thresh, names, alphabet, l.classes, 1,"");
+        cnts = draw_detections_v3(sized, 0,dets, nboxes, thresh, names, alphabet, l.classes, 1,"",0);
         save_image(sized, "pre_predictions");
         if (!dont_show) {
             show_image(sized, "pre_predictions");
@@ -2115,6 +2132,7 @@ void run_detector(int argc, char **argv)
     char* chart_path = find_char_arg(argc, argv, "-chart", 0);
     char *txtpath = find_char_arg(argc, argv,"-txt",0);
     char *gt_path = find_char_arg(argc, argv,"-gt",0);
+    int car_only = find_arg(argc, argv,"-car");
 
 
     if (argc < 4) {
@@ -2155,7 +2173,7 @@ void run_detector(int argc, char **argv)
             if (weights[strlen(weights) - 1] == 0x0d) weights[strlen(weights) - 1] = 0;
     char *filename = (argc > 6) ? argv[6] : 0;
 
-    if (0 == strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, dont_show, ext_output, save_labels, outfile, letter_box, benchmark_layers, gt_path,txtpath);
+    if (0 == strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, dont_show, ext_output, save_labels, outfile, letter_box, benchmark_layers, gt_path, txtpath,car_only);
     else if (0 == strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear, dont_show, calc_map, mjpeg_port, show_imgs, benchmark_layers, chart_path);
     else if (0 == strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
     else if (0 == strcmp(argv[2], "recall")) validate_detector_recall(datacfg, cfg, weights);

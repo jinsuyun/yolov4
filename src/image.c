@@ -360,6 +360,33 @@ bool compute_iou(float gt_a, float gt_b, float gt_c, float gt_d, int pred_xmin, 
     return ok_cnt;
 }
 
+bool car_compute_iou(float left_x, float left_y, float width, float height, int pred_xmin, int pred_ybot, int pred_xmax, int pred_ytop){
+
+    bool ok_cnt = false;
+    int gt_xmin = (int)(left_x);
+    int gt_ybot = (int)(left_y+height);
+    int gt_xmax = (int)(left_x+width);
+    int gt_ytop = (int)(left_y);
+
+    int inter_area;
+    float iou = 0.0;
+    int x_a = __MAX(gt_xmin, pred_xmin);
+    int y_a = __MIN(gt_ybot, pred_ybot);
+    int x_b = __MIN(gt_xmax, pred_xmax);
+    int y_b = __MAX(gt_ytop, pred_ytop);
+
+    if (((x_b - x_a) > 0) && (y_a - y_b) > 0){
+        inter_area = abs((x_b - x_a)) * abs((y_a - y_b));
+        int gt_area = (gt_xmax - gt_xmin) * (gt_ybot -gt_ytop);
+        int pred_area = (pred_xmax - pred_xmin) * (pred_ybot - pred_ytop);
+        iou = (float) inter_area / (gt_area + pred_area - inter_area);
+    }
+    if (iou >= 0.5){
+        ok_cnt = true;
+    }
+    return ok_cnt;
+}
+
 extern int fr_cnt;//image count
 
 void SWAP(sorting* arr, int a, int b){
@@ -394,7 +421,7 @@ void sortCenX(sorting* arr, int m, int n){
 }
 
 
-car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output, char *txt_path)
+car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output, char *txt_path, int car_only)
 {
     bool txt_flag=false;
     static int frame_id = 0;
@@ -450,29 +477,69 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
           gt_flag = false;
     }
     char pred_box[3][5][20];
+    char car_pred_box[50][14][20];
     int label_cnt = 0;
+    int car_count=0;
+    int read_cnt=0;
     if (gt_flag== true){
         char text[256];
         char fuc[3][50];
-        for(int i=0;i<3;i++){
+        char car[50][50];
+        if(car_only==1){
 
-            if(fgets(text, sizeof(text), fp)==NULL) break;
+            while((fgets(text, sizeof(text), fp)!=NULL)){
 
-            else{
-                label_cnt += 1;
-                strcpy(fuc[i],text);
+                strcpy(car[read_cnt],text);
+                read_cnt++;
+            }
+
+            for(int i=0;i<read_cnt;i++){
+                char *input_ptr = strtok(car[i]," ");
+                if(strcmp(input_ptr,"Car")==0){
+                    car_count++;
+                }
+
+                int k=0;
+                while (input_ptr!=NULL){
+                    strcpy(car_pred_box[i][k], input_ptr);
+                    k++;
+                    input_ptr=strtok(NULL," ");
+//                    printf("DD %s\n",input_ptr);
+                }
+//                printf("A %s\n",car_pred_box[0][0]); // Label (str)
+//                printf("B %s\n",car_pred_box[0][1]);
+//                printf("C %s\n",car_pred_box[0][2]);
+//                printf("D %s\n",car_pred_box[0][3]); //left base X
+//                printf("E %s\n",car_pred_box[0][4]); //right base Y
+//                printf("F %s\n",car_pred_box[0][5]); // width
+//                printf("G %s\n",car_pred_box[0][6]); // height
+            }
+
+
+        }
+        else if(car_only==0){
+            for(int i=0;i<3;i++){
+
+                if(fgets(text, sizeof(text), fp)==NULL) break;
+
+                else{
+                    label_cnt += 1;
+                    strcpy(fuc[i],text);
+                }
+            }
+
+            for(int i =0; i<label_cnt; i++){
+                char *input_ptr = strtok(fuc[i], " ");
+                int k = 0;
+                while (input_ptr != NULL)
+                {
+                    strcpy(pred_box[i][k], input_ptr);
+                    k = k + 1;
+                    input_ptr = strtok(NULL, " ");
+                }
             }
         }
-        for(int i =0; i<label_cnt; i++){
-            char *input_ptr = strtok(fuc[i], " ");
-            int k = 0;
-            while (input_ptr != NULL)
-            {
-                strcpy(pred_box[i][k], input_ptr);
-                k = k + 1;
-                input_ptr = strtok(NULL, " ");
-            }
-        }
+
 
         fclose(fp);
     }
@@ -487,19 +554,32 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
     cnts.all_left_cnt = 0;
     cnts.all_center_cnt = 0;
     cnts.all_right_cnt = 0;
+    cnts.car_only_cnt = 0;
+    cnts.gt_car_only_cnt=car_count;
+    cnts.all_car_only_cnt =0;
 
     if (gt_flag == true){
-        // Count GT
-        for(int k=0;k<label_cnt;k++){
-            if (atoi(pred_box[k][0]) == 0){
-                cnts.gt_left_cnt = 1;
-            } else if (atoi(pred_box[k][0]) == 1){
-                cnts.gt_center_cnt = 1;
-            } else if (atoi(pred_box[k][0]) == 2){
-                cnts.gt_right_cnt = 1;
+            // Count GT
+            if(car_only==0){
+                for(int k=0;k<label_cnt;k++){
+                    if (atoi(pred_box[k][0]) == 0){
+                        cnts.gt_left_cnt = 1;
+                    } else if (atoi(pred_box[k][0]) == 1){
+                        cnts.gt_center_cnt = 1;
+                    } else if (atoi(pred_box[k][0]) == 2){
+                        cnts.gt_right_cnt = 1;
+                    }
+                }
             }
-        }
+//            else if(car_only==1){
+//                for (int k=0;k<read_cnt;k++){
+//                    if(strcmp(car_pred_box[k][0],"Car")==0){
+//                        cnts.gt_car_only_cnt = 1;
+//                    }
+//                }
+//            }
      }
+
 
     // image output
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_probs);
@@ -578,45 +658,60 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
             //sprintf(image_name, "result_img/img_%d_%d_%d_%s.jpg", frame_id, img_id, best_class_id, names[best_class_id]);
             //save_image(cropped_im, image_name);
             //free_image(cropped_im);
-            if (gt_flag == true){
-                // Count GT
-//                for(int k=0;k<label_cnt;k++){
-//                    if (atoi(pred_box[k][0]) == 0){
-//                        cnts.gt_left_cnt = 1;
-//                    } else if (atoi(pred_box[k][0]) == 1){
-//                        cnts.gt_center_cnt = 1;
-//                    } else if (atoi(pred_box[k][0]) == 2){
-//                        cnts.gt_right_cnt = 1;
-//                    }
-//                }
 
+//                printf("A %s\n",car_pred_box[0][0]); // Label (str)
+//                printf("B %s\n",car_pred_box[0][1]);
+//                printf("C %s\n",car_pred_box[0][2]);
+//                printf("D %s\n",car_pred_box[0][3]); //left base X
+//                printf("E %s\n",car_pred_box[0][4]); //right base Y
+//                printf("F %s\n",car_pred_box[0][5]); // width
+//                printf("G %s\n",car_pred_box[0][6]); // height
+
+            if (gt_flag == true){
                 bool left_check = false;
                 bool center_check = false;
                 bool right_check = false;
-                for(int k=0;k<label_cnt;k++){
 
-                    if (strcmp(labelstr, "FVL")==0 && atoi(pred_box[k][0]) == 0){
-                        if (left_check == false){
-                            cnts.all_left_cnt = 1;
-                            left_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
-                            if (left_check == true){
-                                cnts.left_cnt = 1;
+                if(car_only==1){
+                    for(int k=0;k<read_cnt;k++){
+                        if(strcmp(car_pred_box[k][0],"Car")==0){
+                            if ((strcmp(labelstr, "FVL")==0)||(strcmp(labelstr, "FVR")==0)||(strcmp(labelstr, "FVI")==0)){
+                                if (left_check == false){
+                                    cnts.all_car_only_cnt = 1;
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.car_only_cnt = 1;
+                                    }
+                                }
                             }
                         }
-                    } else if (strcmp(labelstr, "FVI")==0 && atoi(pred_box[k][0]) == 1){
-                        if (center_check == false){
-                            cnts.all_center_cnt = 1;
-                            center_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
-                            if (center_check == true){
-                                cnts.center_cnt = 1;
+                    }
+                }
+                else if(car_only==0){
+                    for(int k=0;k<label_cnt;k++){
+                        if (strcmp(labelstr, "FVL")==0 && atoi(pred_box[k][0]) == 0){
+                            if (left_check == false){
+                                cnts.all_left_cnt = 1;
+                                left_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                                if (left_check == true){
+                                    cnts.left_cnt = 1;
+                                }
                             }
-                        }
-                    } else if (strcmp(labelstr, "FVR")==0 && atoi(pred_box[k][0]) == 2){
-                        if (right_check == false){
-                            cnts.all_right_cnt = 1;
-                            right_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
-                            if (right_check == true){
-                                cnts.right_cnt = 1;
+                        } else if (strcmp(labelstr, "FVI")==0 && atoi(pred_box[k][0]) == 1){
+                            if (center_check == false){
+                                cnts.all_center_cnt = 1;
+                                center_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                                if (center_check == true){
+                                    cnts.center_cnt = 1;
+                                }
+                            }
+                        } else if (strcmp(labelstr, "FVR")==0 && atoi(pred_box[k][0]) == 2){
+                            if (right_check == false){
+                                cnts.all_right_cnt = 1;
+                                right_check = compute_iou(atof(pred_box[k][1]), atof(pred_box[k][2]), atof(pred_box[k][3]), atof(pred_box[k][4]), left, bot, right, top);
+                                if (right_check == true){
+                                    cnts.right_cnt = 1;
+                                }
                             }
                         }
                     }

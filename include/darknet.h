@@ -77,6 +77,9 @@ typedef struct {
     int all_left_cnt;
     int all_center_cnt;
     int all_right_cnt;
+    int car_only_cnt;
+    int gt_car_only_cnt;
+    int all_car_only_cnt;
 }car_cnt;
 
 struct network;

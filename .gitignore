@@ -109,3 +109,5 @@ build/*
 *.txt
 !CMakeLists.txt
 **/*.txt
+*.zip
+**/*.zip
