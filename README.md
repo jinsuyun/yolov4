@@ -9,3 +9,6 @@ Object detection information for the image is saved as a saved result.txt file.
 
 -out  
 path to save prediction image
+
+-car
+car only recall precision for new GT format
