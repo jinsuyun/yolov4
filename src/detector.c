@@ -1781,7 +1781,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
                 if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
                 else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
             }
-            fr_cnt++;
+//            fr_cnt++;
             car_cnt cnts;
 
             cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path, car_only);
@@ -1803,21 +1803,23 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             if(car_only==0){
 
                 printf("*----Recall [TP/Al Ground truths]----*\n");
-                printf("Left   Car : [%d/%d] \n", left_cnts, gt_left_cnt);
-                printf("Center Car : [%d/%d] \n", center_cnts, gt_center_cnt);
-                printf("Right  Car : [%d/%d] \n", right_cnts, gt_right_cnt);
+                printf("Left   Car : [%d/%d]\n", left_cnts, gt_left_cnt);
+                printf("Center Car : [%d/%d]\n", center_cnts, gt_center_cnt);
+                printf("Right  Car : [%d/%d]\n", right_cnts, gt_right_cnt);
+
 
                 printf("*----Precision [TP/All detections]----*\n");
-                printf("Left   Car : [%d/%d] \n", left_cnts, all_left_cnt);
-                printf("Center Car : [%d/%d] \n", center_cnts, all_center_cnt);
-                printf("Right  Car : [%d/%d] \n", right_cnts, all_right_cnt);
+                printf("Left   Car : [%d/%d]\n", left_cnts, all_left_cnt);
+                printf("Center Car : [%d/%d]\n", center_cnts, all_center_cnt);
+                printf("Right  Car : [%d/%d]\n", right_cnts, all_right_cnt);
             }
             else if(car_only==1){
+
                 printf("*----Recall [TP/All Ground truths]----*\n");
-                printf("Car : [%d/%d] \n", car_only_cnt, gt_car_only_cnt);
+                printf("Car : [%d/%d]\n", car_only_cnt, gt_car_only_cnt);
 
                 printf("*----Precision [TP/All detections]----*\n");
-                printf("Car : [%d/%d] \n", car_only_cnt, all_car_only_cnt);
+                printf("Car : [%d/%d]\n", car_only_cnt, all_car_only_cnt);
 
             }
             if(outfile){

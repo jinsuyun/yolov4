@@ -374,13 +374,17 @@ bool car_compute_iou(float left_x, float left_y, float width, float height, int 
     int y_a = __MIN(gt_ybot, pred_ybot);
     int x_b = __MIN(gt_xmax, pred_xmax);
     int y_b = __MAX(gt_ytop, pred_ytop);
-
+//    printf("%d %d %d %d\n",gt_xmin,gt_ybot,gt_xmax,gt_ytop);
+//    printf("%d %d %d %d\n",pred_xmin,pred_ybot,pred_xmax,pred_ytop);
+//    printf("\n");
+//    printf("%d %d %d %d\n",x_a,y_a,x_b,y_b);
     if (((x_b - x_a) > 0) && (y_a - y_b) > 0){
         inter_area = abs((x_b - x_a)) * abs((y_a - y_b));
         int gt_area = (gt_xmax - gt_xmin) * (gt_ybot -gt_ytop);
         int pred_area = (pred_xmax - pred_xmin) * (pred_ybot - pred_ytop);
         iou = (float) inter_area / (gt_area + pred_area - inter_area);
     }
+    printf("%f\n",iou);
     if (iou >= 0.5){
         ok_cnt = true;
     }
@@ -441,7 +445,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
      }
 
     int box_cnt=0;
-
+//    printf("%f",thresh); 0.25
     for (i = 0; i < selected_detections_num; ++i) {
         const int best_class = selected_detections[i].best_class;
         printf("%s: %.0f%%", names[best_class],    selected_detections[i].det.prob[best_class] * 100);
@@ -477,14 +481,15 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
           gt_flag = false;
     }
     char pred_box[3][5][20];
-    char car_pred_box[50][14][20];
+//    char car_pred_box[50][14][20];
+    char car_pred_box[50][50][100];
     int label_cnt = 0;
     int car_count=0;
     int read_cnt=0;
     if (gt_flag== true){
         char text[256];
         char fuc[3][50];
-        char car[50][50];
+        char car[50][100];
         if(car_only==1){
 
             while((fgets(text, sizeof(text), fp)!=NULL)){
@@ -494,28 +499,28 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
             }
 
             for(int i=0;i<read_cnt;i++){
-                char *input_ptr = strtok(car[i]," ");
+                char *s1=malloc(sizeof(char)*100);
+                strcpy(s1,car[i]);
+
+                char *input_ptr = strtok(s1," ");
                 if(strcmp(input_ptr,"Car")==0){
-                    car_count++;
+                        car_count++;
                 }
-
                 int k=0;
-                while (input_ptr!=NULL){
-                    strcpy(car_pred_box[i][k], input_ptr);
+                while(s1!=NULL){
+                    strcpy(car_pred_box[i][k], s1);
+//                    printf("%s ",car_pred_box[i][k]);
                     k++;
-                    input_ptr=strtok(NULL," ");
-//                    printf("DD %s\n",input_ptr);
+                    s1=strtok(NULL," ");
                 }
-//                printf("A %s\n",car_pred_box[0][0]); // Label (str)
-//                printf("B %s\n",car_pred_box[0][1]);
-//                printf("C %s\n",car_pred_box[0][2]);
-//                printf("D %s\n",car_pred_box[0][3]); //left base X
-//                printf("E %s\n",car_pred_box[0][4]); //right base Y
-//                printf("F %s\n",car_pred_box[0][5]); // width
-//                printf("G %s\n",car_pred_box[0][6]); // height
+
+//                printf("%s ",car_pred_box[i][0]);
+//                printf("%s ",car_pred_box[i][1]);
+//                printf("%s ",car_pred_box[i][2]);
+//                printf("%s ",car_pred_box[i][3]);
+//                printf("%s\n",car_pred_box[i][4]);
+                free(s1);
             }
-
-
         }
         else if(car_only==0){
             for(int i=0;i<3;i++){
@@ -673,15 +678,20 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 bool right_check = false;
 
                 if(car_only==1){
-                    for(int k=0;k<read_cnt;k++){
-                        if(strcmp(car_pred_box[k][0],"Car")==0){
-                            if ((strcmp(labelstr, "FVL")==0)||(strcmp(labelstr, "FVR")==0)||(strcmp(labelstr, "FVI")==0)){
+                    if ((strcmp(labelstr, "FVL")==0)||(strcmp(labelstr, "FVR")==0)||(strcmp(labelstr, "FVI")==0)){
+                        cnts.all_car_only_cnt += 1;
+                        for(int k=0;k<read_cnt;k++){
+                            if(strcmp(car_pred_box[k][0],"Car")==0){
+                                printf("%d\n",k+1);
                                 if (left_check == false){
-                                    cnts.all_car_only_cnt = 1;
+                                    printf("%.2f %.2f %.2f %.2f\n",atof(car_pred_box[k][3]),atof(car_pred_box[k][4]),atof(car_pred_box[k][5]),atof(car_pred_box[k][6]));
+                                    printf("%d %d %d %d\n",left,bot,right,top);
                                     left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
                                     if (left_check == true){
-                                        cnts.car_only_cnt = 1;
+                                        cnts.car_only_cnt += 1;
+                                        left_check = false;
                                     }
+                                    printf("\n");
                                 }
                             }
                         }
@@ -752,6 +762,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 free_image(tmask);
             }
 
+//            printf("%d %d %.1f %.1f %d %d %f\n", i+1,class, (float)(left+right)/2, (float)(top+bot)/2,(right-left), (bot-top),confidence);
             if(box_cnt<20){
                 s[box_cnt].tmp_fr=fr_cnt;
                 s[box_cnt].tmp_label = class;
