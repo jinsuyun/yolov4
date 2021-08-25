@@ -384,7 +384,7 @@ bool car_compute_iou(float left_x, float left_y, float width, float height, int 
         int pred_area = (pred_xmax - pred_xmin) * (pred_ybot - pred_ytop);
         iou = (float) inter_area / (gt_area + pred_area - inter_area);
     }
-    printf("%f\n",iou);
+//    printf("%f\n",iou);
     if (iou >= 0.5){
         ok_cnt = true;
     }
@@ -682,16 +682,14 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                         cnts.all_car_only_cnt += 1;
                         for(int k=0;k<read_cnt;k++){
                             if(strcmp(car_pred_box[k][0],"Car")==0){
-                                printf("%d\n",k+1);
                                 if (left_check == false){
-                                    printf("%.2f %.2f %.2f %.2f\n",atof(car_pred_box[k][3]),atof(car_pred_box[k][4]),atof(car_pred_box[k][5]),atof(car_pred_box[k][6]));
-                                    printf("%d %d %d %d\n",left,bot,right,top);
+//                                    printf("%.2f %.2f %.2f %.2f\n",atof(car_pred_box[k][3]),atof(car_pred_box[k][4]),atof(car_pred_box[k][5]),atof(car_pred_box[k][6]));
+//                                    printf("%d %d %d %d\n",left,bot,right,top);
                                     left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
                                     if (left_check == true){
                                         cnts.car_only_cnt += 1;
                                         left_check = false;
                                     }
-                                    printf("\n");
                                 }
                             }
                         }
