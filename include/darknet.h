@@ -80,6 +80,38 @@ typedef struct {
     int car_only_cnt;
     int gt_car_only_cnt;
     int all_car_only_cnt;
+    // add rest class
+    int bus;
+    int gt_bus;
+    int all_bus;
+
+    int truck;
+    int gt_truck;
+    int all_truck;
+
+    int person;
+    int gt_person;
+    int all_person;
+
+    int bicycle;
+    int gt_bicycle;
+    int all_bicycle;
+
+    int motorbike;
+    int gt_motorbike;
+    int all_motorbike;
+
+    int traffic_sign;
+    int gt_traffic_sign;
+    int all_traffic_sign;
+
+    int traffic_light;
+    int gt_traffic_light;
+    int all_traffic_light;
+
+    int rider;
+    int gt_rider;
+    int all_rider;
 }car_cnt;
 
 struct network;

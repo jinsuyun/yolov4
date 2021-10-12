@@ -485,6 +485,17 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
     char car_pred_box[50][50][100];
     int label_cnt = 0;
     int car_count=0;
+    int fvl_count=0;
+    int fvi_count=0;
+    int fvr_count=0;
+    int bus_count=0;
+    int truck_count=0;
+    int person_count=0;
+    int bicycle_count=0;
+    int motorbike_count=0;
+    int traffic_sign_count=0;
+    int traffic_light_count=0;
+    int rider_count=0;
     int read_cnt=0;
     if (gt_flag== true){
         char text[256];
@@ -503,15 +514,48 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 strcpy(s1,car[i]);
 
                 char *input_ptr = strtok(s1," ");
-                if(strcmp(input_ptr,"Car")==0){
-                        car_count++;
+//                if(strcmp(input_ptr,"Car")==0){
+//                        car_count++;
+//                }
+                if(strcmp(input_ptr,"FVL")==0){
+                        fvl_count++;
+                }
+                else if(strcmp(input_ptr,"FVI")==0){
+                        fvi_count++;
+                }
+                else if(strcmp(input_ptr,"FVR")==0){
+                        fvr_count++;
+                }
+                else if(strcmp(input_ptr,"Bus")==0){
+                        bus_count++;
+                }
+                else if(strcmp(input_ptr,"Truck")==0){
+                        truck_count++;
+                }
+                else if(strcmp(input_ptr,"Pedestrian")==0){
+                        person_count++;
+                }
+                else if(strcmp(input_ptr,"Bicycle")==0){
+                        bicycle_count++;
+                }
+                else if(strcmp(input_ptr,"Motorbike")==0){
+                        motorbike_count++;
+                }
+                else if(strcmp(input_ptr,"Traffic sign")==0){
+                        traffic_sign_count++;
+                }
+                else if(strcmp(input_ptr,"Traffic light")==0){
+                        traffic_light_count++;
+                }
+                else if(strcmp(input_ptr,"Cyclist")==0){
+                        rider_count++;
                 }
                 int k=0;
                 while(s1!=NULL){
                     strcpy(car_pred_box[i][k], s1);
-//                    printf("%s ",car_pred_box[i][k]);
                     k++;
                     s1=strtok(NULL," ");
+
                 }
 
 //                printf("%s ",car_pred_box[i][0]);
@@ -541,6 +585,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                     strcpy(pred_box[i][k], input_ptr);
                     k = k + 1;
                     input_ptr = strtok(NULL, " ");
+
                 }
             }
         }
@@ -550,9 +595,9 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
     }
 
     car_cnt cnts;
-    cnts.gt_left_cnt = 0;
-    cnts.gt_center_cnt = 0;
-    cnts.gt_right_cnt = 0;
+//    cnts.gt_left_cnt = 0;
+//    cnts.gt_center_cnt = 0;
+//    cnts.gt_right_cnt = 0;
     cnts.left_cnt = 0;
     cnts.center_cnt = 0;
     cnts.right_cnt = 0;
@@ -560,8 +605,47 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
     cnts.all_center_cnt = 0;
     cnts.all_right_cnt = 0;
     cnts.car_only_cnt = 0;
-    cnts.gt_car_only_cnt=car_count;
-    cnts.all_car_only_cnt =0;
+    if (car_only==1){
+//        cnts.gt_car_only_cnt=car_count;
+//        cnts.all_car_only_cnt =0;
+
+        cnts.gt_left_cnt = fvl_count;
+        cnts.gt_center_cnt = fvi_count;
+        cnts.gt_right_cnt = fvr_count;
+
+        cnts.bus = 0;
+        cnts.gt_bus = bus_count;
+        cnts.all_bus = 0;
+
+        cnts.truck = 0;
+        cnts.gt_truck = truck_count;
+        cnts.all_truck = 0;
+
+        cnts.person = 0;
+        cnts.gt_person = person_count;
+        cnts.all_person = 0;
+
+        cnts.bicycle = 0;
+        cnts.gt_bicycle = bicycle_count;
+        cnts.all_bicycle = 0;
+
+        cnts.motorbike = 0;
+        cnts.gt_motorbike = motorbike_count;
+        cnts.all_motorbike = 0;
+
+        cnts.traffic_sign = 0;
+        cnts.gt_traffic_sign = traffic_sign_count;
+        cnts.all_traffic_sign = 0;
+
+        cnts.traffic_light = 0;
+        cnts.gt_traffic_light = traffic_light_count;
+        cnts.all_traffic_light = 0;
+
+        cnts.rider = 0;
+        cnts.gt_rider = rider_count;
+        cnts.all_rider = 0;
+    }
+
 
     if (gt_flag == true){
             // Count GT
@@ -589,7 +673,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
     // image output
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_probs);
     int j;
-
+//    printf("%d\n",selected_detections_num);
     for (i = 0; i < selected_detections_num; ++i) {
 
             int width = im.h * .002;
@@ -678,22 +762,157 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 bool right_check = false;
 
                 if(car_only==1){
-                    if ((strcmp(labelstr, "FVL")==0)||(strcmp(labelstr, "FVR")==0)||(strcmp(labelstr, "FVI")==0)){
-                        cnts.all_car_only_cnt += 1;
-                        for(int k=0;k<read_cnt;k++){
-                            if(strcmp(car_pred_box[k][0],"Car")==0){
+//                    if ((strcmp(labelstr, "FVL")==0)||(strcmp(labelstr, "FVR")==0)||(strcmp(labelstr, "FVI")==0)){
+//                        cnts.all_car_only_cnt += 1;
+//                    printf("%s ",labelstr);
+                    if(strcmp(labelstr,"FVL")==0){
+                        cnts.all_left_cnt += 1;
+                    }
+                    else if(strcmp(labelstr,"FVI")==0){
+                        cnts.all_center_cnt += 1;
+                    }
+                    else if(strcmp(labelstr,"FVR")==0){
+                        cnts.all_right_cnt += 1;
+                    }
+                    else if(strcmp(labelstr,"Bus")==0){
+                        cnts.all_bus += 1;
+                    }
+                    else if(strcmp(labelstr,"Truck")==0){
+                        cnts.all_truck += 1;
+                    }
+                    else if(strcmp(labelstr,"Person")==0){
+                        cnts.all_person += 1;
+                    }
+                    else if(strcmp(labelstr,"Bicycle")==0){
+                        cnts.all_bicycle += 1;
+                    }
+                    else if(strcmp(labelstr,"Motorbike")==0){
+                        cnts.all_motorbike +=1;
+                    }
+                    else if(strcmp(labelstr,"Traffic sign")==0){
+                        cnts.all_traffic_sign +=1;
+                    }
+                    else if(strcmp(labelstr,"Traffic light")==0){
+                        cnts.all_traffic_light +=1;
+                    }
+                    else if(strcmp(labelstr,"Rider")==0){
+                        cnts.all_rider+=1;
+                    }
+
+                    for(int k=0;k<read_cnt;k++){
+//                            printf("%s %s \n",car_pred_box[k][0],labelstr);
+                            left_check=false;
+//                            printf("%s %s \n",car_pred_box[k][0],labelstr);
+                            if(strcmp("FVL",labelstr)==0&&(strcmp(car_pred_box[k][0],"FVL")==0)){
                                 if (left_check == false){
+//                                    printf("FVL %s",labelstr);
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.left_cnt += 1;
+//                                        printf("cnts.left_cnt %d\n",cnts.left_cnt);
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("FVI",labelstr)==0&&(strcmp(car_pred_box[k][0],"FVI")==0)){
+                                if (left_check == false){
+//                                    printf("FVI %s",labelstr);
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.center_cnt += 1;
+//                                        printf("cnts.cen_cnt %d\n",cnts.center_cnt);
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("FVR",labelstr)==0&&(strcmp(car_pred_box[k][0],"FVR")==0)){
+                                if (left_check == false){
+//                                    printf("FVR %s",labelstr);
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.right_cnt += 1;
+//                                        printf("cnts.right_cnt %d\n",cnts.right_cnt);
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Bus",labelstr)==0&&(strcmp(car_pred_box[k][0],"Bus")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.bus += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Truck",labelstr)==0&&(strcmp(car_pred_box[k][0],"Truck")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.truck += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Person",labelstr)==0&&(strcmp(car_pred_box[k][0],"Pedestrian")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.person += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Bicycle",labelstr)==0&&(strcmp(car_pred_box[k][0],"Bicycle")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.bicycle += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Motorbike",labelstr)==0&&(strcmp(car_pred_box[k][0],"Motorbike")==0)){
+                                if (left_check == false){
+//                                    printf("Motor %s",labelstr);
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.motorbike += 1;
+//                                        printf("cnts.motorbike %d\n",cnts.motorbike);
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Traffic sign",labelstr)==0&&(strcmp(car_pred_box[k][0],"Traffic sign")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.traffic_sign += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp("Traffic light",labelstr)==0&&(strcmp(car_pred_box[k][0],"Traffic light")==0)){
+                                if (left_check == false){
+
+                                    left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
+                                    if (left_check == true){
+                                        cnts.traffic_light += 1;
+//                                        left_check = false;
+                                    }
+                                }
+                            }else if(strcmp(labelstr,"Rider")==0&&(strcmp(car_pred_box[k][0],"Cyclist")==0)){
+                                if (left_check == false){
+//                                    printf("Cycleist %s",labelstr);
 //                                    printf("%.2f %.2f %.2f %.2f\n",atof(car_pred_box[k][3]),atof(car_pred_box[k][4]),atof(car_pred_box[k][5]),atof(car_pred_box[k][6]));
 //                                    printf("%d %d %d %d\n",left,bot,right,top);
                                     left_check = car_compute_iou(atof(car_pred_box[k][3]), atof(car_pred_box[k][4]), atof(car_pred_box[k][5]), atof(car_pred_box[k][6]), left, bot, right, top);
                                     if (left_check == true){
-                                        cnts.car_only_cnt += 1;
-                                        left_check = false;
+                                        cnts.rider += 1;
+//                                        printf("cnts.rider %d\n",cnts.rider);
+//                                        left_check = false;
                                     }
                                 }
                             }
+
                         }
-                    }
+//                    }
                 }
                 else if(car_only==0){
                     for(int k=0;k<label_cnt;k++){

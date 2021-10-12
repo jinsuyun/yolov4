@@ -38,6 +38,38 @@ int gt_car_only_cnt = 0;
 int all_car_only_cnt =0;
 int fr_cnt=0;
 
+int bus_cnts=0;
+int gt_bus_cnts=0;
+int all_bus_cnts=0;
+
+int truck_cnts=0;
+int gt_truck_cnts=0;
+int all_truck_cnts=0;
+
+int person_cnts=0;
+int gt_person_cnts=0;
+int all_person_cnts=0;
+
+int bicycle_cnts=0;
+int gt_bicycle_cnts=0;
+int all_bicycle_cnts=0;
+
+int motorbike_cnts=0;
+int gt_motorbike_cnts=0;
+int all_motorbike_cnts=0;
+
+int traffic_sign_cnts=0;
+int gt_traffic_sign_cnts=0;
+int all_traffic_sign_cnts=0;
+
+int traffic_light_cnts=0;
+int gt_traffic_light_cnts=0;
+int all_traffic_light_cnts=0;
+
+int rider_cnts=0;
+int gt_rider_cnts=0;
+int all_rider_cnts=0;
+
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show, int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char* chart_path)
 {
@@ -1800,26 +1832,81 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             gt_car_only_cnt += cnts.gt_car_only_cnt;
             all_car_only_cnt += cnts.all_car_only_cnt;
 
+            bus_cnts += cnts.bus;
+            gt_bus_cnts +=cnts.gt_bus;
+            all_bus_cnts +=cnts.all_bus;
+
+            truck_cnts += cnts.truck;
+            gt_truck_cnts += cnts.gt_truck;
+            all_truck_cnts += cnts.all_truck;
+
+            person_cnts += cnts.person;
+            gt_person_cnts += cnts.gt_person;
+            all_person_cnts += cnts.all_person;
+
+            bicycle_cnts += cnts.bicycle;
+            gt_bicycle_cnts += cnts.gt_bicycle;
+            all_bicycle_cnts += cnts.all_bicycle;
+
+            motorbike_cnts += cnts.motorbike;
+            gt_motorbike_cnts += cnts.gt_motorbike;
+            all_motorbike_cnts += cnts.all_motorbike;
+
+            traffic_sign_cnts += cnts.traffic_sign;
+            gt_traffic_sign_cnts += cnts.gt_traffic_sign;
+            all_traffic_sign_cnts += cnts.all_traffic_sign;
+
+            traffic_light_cnts += cnts.traffic_light;
+            gt_traffic_light_cnts += cnts.gt_traffic_light;
+            all_traffic_light_cnts += cnts.all_traffic_light;
+
+            rider_cnts += cnts.rider;
+            gt_rider_cnts += cnts.gt_rider;
+            all_rider_cnts += cnts.all_rider;
+
             if(car_only==0){
 
                 printf("*----Recall [TP/Al Ground truths]----*\n");
                 printf("Left   Car : [%d/%d]\n", left_cnts, gt_left_cnt);
                 printf("Center Car : [%d/%d]\n", center_cnts, gt_center_cnt);
                 printf("Right  Car : [%d/%d]\n", right_cnts, gt_right_cnt);
+                //printf("Bus : [%d/%d]\n", bus_cnts, gt_bus_cnts);
 
 
                 printf("*----Precision [TP/All detections]----*\n");
                 printf("Left   Car : [%d/%d]\n", left_cnts, all_left_cnt);
                 printf("Center Car : [%d/%d]\n", center_cnts, all_center_cnt);
                 printf("Right  Car : [%d/%d]\n", right_cnts, all_right_cnt);
+                //printf("Bus : [%d/%d]\n", bus_cnts, all_bus_cnts);
             }
             else if(car_only==1){
 
                 printf("*----Recall [TP/All Ground truths]----*\n");
-                printf("Car : [%d/%d]\n", car_only_cnt, gt_car_only_cnt);
+                printf("FVL : [%d/%d]\n", left_cnts, gt_left_cnt);
+                printf("FVI : [%d/%d]\n", center_cnts, gt_center_cnt);
+                printf("FVR : [%d/%d]\n", right_cnts, gt_right_cnt);
+                printf("Bus : [%d/%d]\n", bus_cnts, gt_bus_cnts);
+                printf("Truck : [%d/%d]\n", truck_cnts, gt_truck_cnts);
+                printf("Person : [%d/%d]\n", person_cnts, gt_person_cnts);
+                printf("Bicycle : [%d/%d]\n", bicycle_cnts, gt_bicycle_cnts);
+                printf("Motorbike : [%d/%d]\n", motorbike_cnts, gt_motorbike_cnts);
+                printf("Traffic sign : [%d/%d]\n", traffic_sign_cnts, gt_traffic_sign_cnts);
+                printf("Traffic light : [%d/%d]\n", traffic_light_cnts, gt_traffic_light_cnts);
+                printf("Rider : [%d/%d]\n", rider_cnts, gt_rider_cnts);
+
 
                 printf("*----Precision [TP/All detections]----*\n");
-                printf("Car : [%d/%d]\n", car_only_cnt, all_car_only_cnt);
+                printf("FVL : [%d/%d]\n", left_cnts, all_left_cnt);
+                printf("FVI : [%d/%d]\n", center_cnts, all_center_cnt);
+                printf("FVR : [%d/%d]\n", right_cnts, all_right_cnt);
+                printf("Bus : [%d/%d]\n", bus_cnts, all_bus_cnts);
+                printf("Truck : [%d/%d]\n", truck_cnts, all_truck_cnts);
+                printf("Person : [%d/%d]\n", person_cnts, all_person_cnts);
+                printf("Bicycle : [%d/%d]\n", bicycle_cnts, all_bicycle_cnts);
+                printf("Motorbike : [%d/%d]\n", motorbike_cnts, all_motorbike_cnts);
+                printf("Traffic sign : [%d/%d]\n", traffic_sign_cnts, all_traffic_sign_cnts);
+                printf("Traffic light : [%d/%d]\n", traffic_light_cnts, all_traffic_light_cnts);
+                printf("Rider : [%d/%d]\n", rider_cnts, all_rider_cnts);
 
             }
             if(outfile){
