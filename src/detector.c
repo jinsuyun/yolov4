@@ -1816,7 +1816,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 //            fr_cnt++;
             car_cnt cnts;
 
-            cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path, car_only);
+            cnts=draw_detections_v3(im, gt_input, dets, nboxes, thresh, names, alphabet, l.classes, ext_output, txt_path, car_only,namelist[idx]->d_name);
 
 
             left_cnts += cnts.left_cnt;
@@ -1910,11 +1910,12 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 
             }
             if(outfile){
-		    strncpy(out_p, outfile, 256);
-		    strcat(out_p, "/");
-		    strcat(out_p, namelist[idx]->d_name);
-		    eliminate_bdd(out_p, ".jpg");
-	            save_image(im, out_p);
+                strncpy(out_p, outfile, 256);
+                strcat(out_p, "/");
+                strcat(out_p, namelist[idx]->d_name);
+                eliminate_bdd(out_p, ".jpg");
+                eliminate_bdd(out_p, ".png");
+                save_image(im, out_p);
 	        }
 
             if (!dont_show) {
@@ -2135,7 +2136,7 @@ void draw_object(char *datacfg, char *cfgfile, char *weightfile, char *filename,
         }
 
         car_cnt cnts;
-        cnts = draw_detections_v3(sized, 0,dets, nboxes, thresh, names, alphabet, l.classes, 1,"",0);
+        cnts = draw_detections_v3(sized, 0,dets, nboxes, thresh, names, alphabet, l.classes, 1,"",0,"");
         save_image(sized, "pre_predictions");
         if (!dont_show) {
             show_image(sized, "pre_predictions");

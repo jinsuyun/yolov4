@@ -113,6 +113,7 @@ image get_label(image **characters, char *string, int size)
     if(size > 7) size = 7;
     image label = make_empty_image(0,0,0);
     while(*string){
+
         image l = characters[size][(int)*string];
         image n = tile_images(label, l, -size - 1 + (size+1)/2);
         free_image(label);
@@ -128,9 +129,15 @@ image get_label_v3(image **characters, char *string, int size)
 {
     size = size / 10;
     if (size > 7) size = 7;
+//    size=0.1;
+//    if(strcmp(string,"Car(I)"))
     image label = make_empty_image(0, 0, 0);
     while (*string) {
+        if(strcmp(string,"Car(I)")||strcmp(string,"Car(L)")||strcmp(string,"Car(R)")){
+            char *ptr=strtok(string,"(");
+        }
         image l = characters[size][(int)*string];
+//        printf("%d %d\n",size,-size - 1 + (size + 1) / 2);
         image n = tile_images(label, l, -size - 1 + (size + 1) / 2);
         free_image(label);
         label = n;
@@ -425,12 +432,13 @@ void sortCenX(sorting* arr, int m, int n){
 }
 
 
-car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output, char *txt_path, int car_only)
+car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output, char *txt_path, int car_only,char *img_name)
 {
     bool txt_flag=false;
     static int frame_id = 0;
     frame_id++;
     FILE* fw1;
+
     int selected_detections_num;
 
     detection_with_class* selected_detections = get_actual_detections(dets, num, thresh, &selected_detections_num, names);
@@ -443,6 +451,23 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
         fw1=fopen(txt_path,"a");// txt make;
         txt_flag=true;
      }
+
+    //mAP result txt file
+    FILE* mAP_fw;
+    char result_txtdir[100]="txt_result_mAP/";
+    char *imgName=strtok(img_name,".");//remove .jpg from original img name
+    char *imgNameArr[10]={NULL,};
+    int img_i=0;
+    while(imgName!=NULL){
+        imgNameArr[img_i]=imgName;
+        img_i++;
+        imgName=strtok(NULL," ");
+    }
+    char *className;//class name per bounding box from image
+    strcat(result_txtdir,imgNameArr[0]);
+    strcat(result_txtdir,".txt");
+    mAP_fw=fopen(result_txtdir,"w+");// txt make;
+
 
     int box_cnt=0;
 //    printf("%f",thresh); 0.25
@@ -501,6 +526,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
         char text[256];
         char fuc[3][50];
         char car[50][100];
+
         if(car_only==1){
 
             while((fgets(text, sizeof(text), fp)!=NULL)){
@@ -508,7 +534,19 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 strcpy(car[read_cnt],text);
                 read_cnt++;
             }
-
+            FILE *gt_file;
+            char gt_result_txtdir[100]="txt_result_gt_mAP/";
+            char *gt_imgName=strtok(img_name,".");//remove .jpg from original img name
+            char *gt_imgNameArr[10]={NULL,};
+            int gt_img_i=0;
+            while(gt_imgName!=NULL){
+                gt_imgNameArr[img_i]=imgName;
+                gt_img_i++;
+                gt_imgName=strtok(NULL," ");
+            }
+            strcat(gt_result_txtdir,imgNameArr[0]);
+            strcat(gt_result_txtdir,".txt");
+            gt_file=fopen(gt_result_txtdir,"w+");// txt make;
             for(int i=0;i<read_cnt;i++){
                 char *s1=malloc(sizeof(char)*100);
                 strcpy(s1,car[i]);
@@ -517,6 +555,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
 //                if(strcmp(input_ptr,"Car")==0){
 //                        car_count++;
 //                }
+
                 if(strcmp(input_ptr,"FVL")==0){
                         fvl_count++;
                 }
@@ -557,7 +596,21 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                     s1=strtok(NULL," ");
 
                 }
-
+                int gt_xmin = (int)(atof(car_pred_box[i][3]));
+                int gt_ybot = (int)(atof(car_pred_box[i][4]))+(int)(atof(car_pred_box[i][6]));
+                int gt_xmax = (int)(atof(car_pred_box[i][3]))+(int)(atof(car_pred_box[i][5]));
+                int gt_ytop = (int)(atof(car_pred_box[i][4]));
+//                printf("input_ptr   %s\n",input_ptr);
+                if(strcmp(input_ptr,"Traffic sign")==0){
+                    input_ptr="Traffic_sign";
+                }
+                else if(strcmp(input_ptr,"Traffic light")==0){
+                    input_ptr="Traffic_light";
+                }
+//                printf("input_ptr %s\n",input_ptr);
+                if(strlen(input_ptr)!=1){
+                    fprintf(gt_file,"%s %d %d %d %d\n",input_ptr, gt_xmin,gt_ytop,gt_xmax,gt_ybot);
+                }
 //                printf("%s ",car_pred_box[i][0]);
 //                printf("%s ",car_pred_box[i][1]);
 //                printf("%s ",car_pred_box[i][2]);
@@ -565,6 +618,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
 //                printf("%s\n",car_pred_box[i][4]);
                 free(s1);
             }
+            fclose(gt_file);
         }
         else if(car_only==0){
             for(int i=0;i<3;i++){
@@ -697,6 +751,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                     class = j ;
                 }
                 confidence = selected_detections[i].det.prob[j];
+                className=names[j];
 			}
         }
 
@@ -949,7 +1004,12 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 draw_box_width_bw(im, left, top, right, bot, width, 0.8);    // 1 channel Black-White
             }
             else {
-                draw_box_width(im, left, top, right, bot, width, red, green, blue); // 3 channels RGB
+                if((right-left)*(bot-top)>5056){// bounding box size
+//                    if((strcmp("FVL",labelstr)==0)|| (strcmp("FVI",labelstr)==0) (strcmp("FVR",labelstr)==0)|| (strcmp("Bus",labelstr)==0)|| (strcmp("Truck",labelstr)==0))
+                        draw_box_width(im, left, top, right, bot, width, red, green, blue); // 3 channels RGB
+                }
+                else if((strcmp(labelstr, "Traffic light")==0)||(strcmp(labelstr, "Traffic sign")==0))
+                        draw_box_width(im, left, top, right, bot, width, red, green, blue); // 3 channels RGB
             }
             if (alphabet) {
                 char labelstr[4096] = { 0 };
@@ -964,9 +1024,26 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 //        strcat(labelstr, names[j]);
                 //    }
                 //}
+
+                // change FV --> Car()
+                if((strcmp("FVL",labelstr)==0)){
+                    strcpy(labelstr,"Car(L)");
+                }
+                else if(strcmp("FVI",labelstr)==0) {
+                    strcpy(labelstr,"Car(I)");
+                }
+                else if(strcmp("FVR",labelstr)==0){
+                    strcpy(labelstr,"Car(R)");
+                }
                 image label = get_label_v3(alphabet, labelstr, (im.h*.02));
+
                 //draw_label(im, top + width, left, label, rgb);
-                draw_weighted_label(im, top + width, left, label, rgb, 0.7);
+                if((right-left)*(bot-top)>5056){
+                    draw_weighted_label(im, top + width, left, label, rgb, 0.7);
+                }
+                else if((strcmp(labelstr, "Traffic light")==0)||(strcmp(labelstr, "Traffic sign")==0))
+                    draw_weighted_label(im, top + width, left, label, rgb, 0.7);
+
                 free_image(label);
             }
             if (selected_detections[i].det.mask) {
@@ -978,7 +1055,13 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
                 free_image(resized_mask);
                 free_image(tmask);
             }
-
+            if(strcmp(className,"Traffic sign")==0){
+                    className="Traffic_sign";
+                }
+            else if(strcmp(className,"Traffic light")==0){
+                className="Traffic_light";
+            }
+            fprintf(mAP_fw,"%s %f %d %d %d %d\n", className,confidence,left,top,right,bot);
 //            printf("%d %d %.1f %.1f %d %d %f\n", i+1,class, (float)(left+right)/2, (float)(top+bot)/2,(right-left), (bot-top),confidence);
             if(box_cnt<20){
                 s[box_cnt].tmp_fr=fr_cnt;
@@ -992,6 +1075,7 @@ car_cnt draw_detections_v3(image im, char *gt_input, detection *dets, int num, f
 
             }
     }
+    fclose(mAP_fw);
     float dip =96.0; // KODAS_V3 based
     float inch=2.54;
     sortCenX(s,0,box_cnt-1);
