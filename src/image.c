@@ -26,7 +26,9 @@
 extern int check_mistakes;
 //int windows = 0;
 
-float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
+//float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
+float colors[6][3] = { {200,100,200}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{100,0,0} };
+//float colors[6][3] = { {33,0,1}, {44,0,1},{22,0,1},{11,0,1},{188,0,1},{155,0,1} };
 
 float get_color(int c, int x, int max)
 {
@@ -132,10 +134,12 @@ image get_label_v3(image **characters, char *string, int size)
 //    size=0.1;
 //    if(strcmp(string,"Car(I)"))
     image label = make_empty_image(0, 0, 0);
+//    char *ptr=strtok(string,"(");
     while (*string) {
-        if(strcmp(string,"Car(I)")||strcmp(string,"Car(L)")||strcmp(string,"Car(R)")){
-            char *ptr=strtok(string,"(");
-        }
+//        if(strcmp(string,"Car(I)")||strcmp(string,"Car(L)")||strcmp(string,"Car(R)")){
+//
+//            printf("%s",ptr);
+//        }
         image l = characters[size][(int)*string];
 //        printf("%d %d\n",size,-size - 1 + (size + 1) / 2);
         image n = tile_images(label, l, -size - 1 + (size + 1) / 2);
